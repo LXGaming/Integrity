@@ -17,7 +17,6 @@
 package io.github.lxgaming.integrity.listeners;
 
 import io.github.lxgaming.integrity.Integrity;
-import io.github.lxgaming.integrity.util.Reference;
 import io.github.lxgaming.integrity.util.SpongeHelper;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.Order;
