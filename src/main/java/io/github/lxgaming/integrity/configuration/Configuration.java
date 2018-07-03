@@ -50,8 +50,7 @@ public class Configuration {
             Integrity.getInstance().getLogger().info("Successfully loaded configuration file.");
         } catch (IOException | RuntimeException ex) {
             configurationNode = getConfigurationLoader().createEmptyNode(getConfigurationOptions());
-            Integrity.getInstance().getLogger().error("Encountered an error processing {}::loadConfiguration", getClass().getSimpleName());
-            ex.printStackTrace();
+            Integrity.getInstance().getLogger().error("Encountered an error processing {}::loadConfiguration", getClass().getSimpleName(), ex);
         }
     }
     
@@ -71,8 +70,7 @@ public class Configuration {
             getConfigurationLoader().save(getConfigurationNode());
             Integrity.getInstance().getLogger().info("Successfully saved configuration file.");
         } catch (IOException | RuntimeException ex) {
-            Integrity.getInstance().getLogger().error("Encountered an error processing {}::saveConfiguration", getClass().getSimpleName());
-            ex.printStackTrace();
+            Integrity.getInstance().getLogger().error("Encountered an error processing {}::saveConfiguration", getClass().getSimpleName(), ex);
         }
     }
     
