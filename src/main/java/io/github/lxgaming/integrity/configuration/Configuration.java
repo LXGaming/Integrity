@@ -21,78 +21,58 @@ import ninja.leaping.configurate.ConfigurationOptions;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
 import ninja.leaping.configurate.loader.ConfigurationLoader;
+import ninja.leaping.configurate.objectmapping.ObjectMapper;
+import ninja.leaping.configurate.objectmapping.ObjectMappingException;
 
 import java.io.IOException;
-import java.util.function.Function;
+import java.nio.file.Path;
 
 public class Configuration {
     
     private ConfigurationLoader<CommentedConfigurationNode> configurationLoader;
-    private ConfigurationOptions configurationOptions;
+    private ObjectMapper<Config>.BoundInstance objectMapper;
     private CommentedConfigurationNode configurationNode;
-    
     private Config config;
+    
+    public Configuration(Path path) {
+        try {
+            this.configurationLoader = HoconConfigurationLoader.builder().setPath(path).build();
+            this.objectMapper = ObjectMapper.forClass(Config.class).bindToNew();
+        } catch (Exception ex) {
+            Integrity.getInstance().getLogger().error("Encountered an error initializing {}", getClass().getSimpleName(), ex);
+        }
+    }
     
     public void loadConfiguration() {
         try {
-            configurationLoader = HoconConfigurationLoader.builder().setPath(Integrity.getInstance().getPath()).build();
-            configurationOptions = ConfigurationOptions.defaults().setShouldCopyDefaults(true);
-            configurationNode = getConfigurationLoader().load(getConfigurationOptions());
-            config = new Config();
-            
-            getConfig().setDebug(getConfigurationNode().getNode("general", "debug").getBoolean(false));
-            getConfig().setCrashServer(getConfigurationNode().getNode("general", "crashServer").getBoolean(false));
-            getConfig().setCrashMessage(getConfigurationNode().getNode("general", "crashMessage").getString("\nLoaded: [LOADED]\nMissing: [MISSING]"));
-            getConfig().setWhitelistServer(getConfigurationNode().getNode("general", "whitelistServer").getBoolean(true));
-            getConfig().setWhitelistMessage(getConfigurationNode().getNode("general", "whitelistMessage").getString("&cServer is currently unavailable"));
-            getConfig().setModList(getConfigurationNode().getNode("general", "modList").getList(getStringTransformer()));
-            
+            configurationNode = getConfigurationLoader().load(ConfigurationOptions.defaults());
+            config = getObjectMapper().populate(getConfigurationNode());
             Integrity.getInstance().getLogger().info("Successfully loaded configuration file.");
-        } catch (IOException | RuntimeException ex) {
-            configurationNode = getConfigurationLoader().createEmptyNode(getConfigurationOptions());
+        } catch (IOException | ObjectMappingException | RuntimeException ex) {
+            configurationNode = getConfigurationLoader().createEmptyNode(ConfigurationOptions.defaults());
             Integrity.getInstance().getLogger().error("Encountered an error processing {}::loadConfiguration", getClass().getSimpleName(), ex);
         }
     }
     
     public void saveConfiguration() {
         try {
-            if (getConfig() == null) {
-                throw new NullPointerException("Config is null!");
-            }
-            
-            getConfigurationNode().getNode("general", "debug").setValue(getConfig().isDebug());
-            getConfigurationNode().getNode("general", "crashServer").setValue(getConfig().isCrashServer()).setComment("Generates a crash reports then stops the server.");
-            getConfigurationNode().getNode("general", "crashMessage").setValue(getConfig().getCrashMessage());
-            getConfigurationNode().getNode("general", "whitelistServer").setValue(getConfig().isWhitelistServer()).setComment("Prevents players from joining the server.");
-            getConfigurationNode().getNode("general", "whitelistMessage").setValue(getConfig().getWhitelistMessage());
-            getConfigurationNode().getNode("general", "modList").setValue(getConfig().getModList()).setComment("List of mods required for the server to be operational.");
-            
+            getObjectMapper().serialize(getConfigurationNode());
             getConfigurationLoader().save(getConfigurationNode());
             Integrity.getInstance().getLogger().info("Successfully saved configuration file.");
-        } catch (IOException | RuntimeException ex) {
+        } catch (IOException | ObjectMappingException | RuntimeException ex) {
             Integrity.getInstance().getLogger().error("Encountered an error processing {}::saveConfiguration", getClass().getSimpleName(), ex);
         }
     }
     
-    private Function<Object, String> getStringTransformer() {
-        return (Object object) -> {
-            if (object instanceof String) {
-                return (String) object;
-            }
-            
-            return null;
-        };
-    }
-    
-    public ConfigurationLoader<CommentedConfigurationNode> getConfigurationLoader() {
+    private ConfigurationLoader<CommentedConfigurationNode> getConfigurationLoader() {
         return configurationLoader;
     }
     
-    public ConfigurationOptions getConfigurationOptions() {
-        return configurationOptions;
+    private ObjectMapper<Config>.BoundInstance getObjectMapper() {
+        return objectMapper;
     }
     
-    public CommentedConfigurationNode getConfigurationNode() {
+    private CommentedConfigurationNode getConfigurationNode() {
         return configurationNode;
     }
     

@@ -32,9 +32,12 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class SpongeHelper {
+public class Toolbox {
     
     public static Text getTextPrefix() {
         Text.Builder textBuilder = Text.builder();
@@ -99,5 +102,10 @@ public class SpongeHelper {
         }
         
         return true;
+    }
+    
+    @SafeVarargs
+    public static <E> ArrayList<E> newArrayList(E... elements) {
+        return Stream.of(elements).collect(Collectors.toCollection(ArrayList::new));
     }
 }

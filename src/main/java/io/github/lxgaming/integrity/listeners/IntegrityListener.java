@@ -17,7 +17,8 @@
 package io.github.lxgaming.integrity.listeners;
 
 import io.github.lxgaming.integrity.Integrity;
-import io.github.lxgaming.integrity.util.SpongeHelper;
+import io.github.lxgaming.integrity.configuration.Config;
+import io.github.lxgaming.integrity.util.Toolbox;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.Order;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
@@ -28,12 +29,12 @@ public class IntegrityListener {
     
     @Listener(order = Order.LAST)
     public void onClientConnection(ClientConnectionEvent.Join event) {
-        if (!Integrity.getInstance().getConfig().isCrashServer() && !Integrity.getInstance().getConfig().isWhitelistServer()) {
+        if (!Integrity.getInstance().getConfig().map(Config::isCrashServer).orElse(false) && !Integrity.getInstance().getConfig().map(Config::isWhitelistServer).orElse(false)) {
             return;
         }
         
         if (event.getTargetEntity().hasPermission("integrity.notification")) {
-            event.getTargetEntity().sendMessage(Text.of(SpongeHelper.getTextPrefix(), TextColors.RED, "An error occurred. Please check the console."));
+            event.getTargetEntity().sendMessage(Text.of(Toolbox.getTextPrefix(), TextColors.RED, "An error occurred. Please check the console."));
         }
     }
 }

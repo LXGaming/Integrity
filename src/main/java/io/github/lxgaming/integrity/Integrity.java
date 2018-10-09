@@ -21,23 +21,24 @@ import io.github.lxgaming.integrity.configuration.Config;
 import io.github.lxgaming.integrity.configuration.Configuration;
 import io.github.lxgaming.integrity.listeners.IntegrityListener;
 import io.github.lxgaming.integrity.util.Reference;
-import io.github.lxgaming.integrity.util.SpongeHelper;
+import io.github.lxgaming.integrity.util.Toolbox;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.Order;
-import org.spongepowered.api.event.game.state.GameInitializationEvent;
-import org.spongepowered.api.event.game.state.GameLoadCompleteEvent;
+import org.spongepowered.api.event.game.state.GameConstructionEvent;
+import org.spongepowered.api.event.game.state.GamePostInitializationEvent;
+import org.spongepowered.api.event.game.state.GamePreInitializationEvent;
 import org.spongepowered.api.event.game.state.GameStartedServerEvent;
 import org.spongepowered.api.event.game.state.GameStoppingEvent;
 import org.spongepowered.api.plugin.Plugin;
 import org.spongepowered.api.text.Text;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Plugin(
         id = Reference.PLUGIN_ID,
@@ -60,32 +61,33 @@ public class Integrity {
     
     private Configuration configuration;
     
-    public Integrity() {
+    public void onGameConstruction(GameConstructionEvent event) {
         instance = this;
+        configuration = new Configuration(getPath());
     }
     
     @Listener
-    public void onGameInitialization(GameInitializationEvent event) {
-        configuration = new Configuration();
-    }
-    
-    @Listener
-    public void onGameLoadComplete(GameLoadCompleteEvent event) {
+    public void onGamePreInitialization(GamePreInitializationEvent event) {
         getConfiguration().loadConfiguration();
+    }
+    
+    @Listener
+    public void onGamePostInitialization(GamePostInitializationEvent event) {
         getConfiguration().saveConfiguration();
-        getLogger().info("{} v{} has started.", Reference.PLUGIN_NAME, Reference.PLUGIN_VERSION);
     }
     
     @Listener(order = Order.LAST)
     public void onGameStartedServer(GameStartedServerEvent event) {
-        if (getConfig() == null) {
-            SpongeHelper.crashServer(Text.of("Configuration failed to load"));
+        getLogger().info("{} v{} has started.", Reference.PLUGIN_NAME, Reference.PLUGIN_VERSION);
+        List<String> loadedMods = Toolbox.newArrayList();
+        List<String> missingMods = Toolbox.newArrayList();
+        
+        List<String> modList = getConfig().map(Config::getModList).orElse(null);
+        if (modList == null || modList.isEmpty()) {
             return;
         }
         
-        List<String> loadedMods = new ArrayList<String>();
-        List<String> missingMods = new ArrayList<String>();
-        for (String modId : getConfig().getModList()) {
+        for (String modId : modList) {
             if (StringUtils.startsWith(modId, "!") && Sponge.getPluginManager().isLoaded(StringUtils.substringAfter(modId, "!"))) {
                 loadedMods.add(StringUtils.substringAfter(modId, "!"));
             }
@@ -115,16 +117,16 @@ public class Integrity {
         
         Sponge.getEventManager().registerListeners(getInstance(), new IntegrityListener());
         
-        if (getConfig().isWhitelistServer()) {
-            SpongeHelper.whitelistServer(SpongeHelper.convertColor(getConfig().getWhitelistMessage()));
+        if (getConfig().map(Config::isWhitelistServer).orElse(false)) {
+            Toolbox.whitelistServer(Toolbox.convertColor(getConfig().map(Config::getWhitelistMessage).orElse("Error")));
         }
         
-        if (getConfig().isCrashServer()) {
-            String reason = getConfig().getCrashMessage()
+        if (getConfig().map(Config::isCrashServer).orElse(false)) {
+            String reason = getConfig().map(Config::getCrashMessage).orElse("Error")
                     .replace("[LOADED]", String.join(", ", loadedMods))
                     .replace("[MISSING]", String.join(", ", missingMods));
             
-            SpongeHelper.crashServer(Text.of(reason));
+            Toolbox.crashServer(Text.of(reason));
         }
     }
     
@@ -134,7 +136,7 @@ public class Integrity {
     }
     
     public void debugMessage(String string, Object... objects) {
-        if (getConfig() != null && getConfig().isDebug()) {
+        if (getConfig().map(Config::isDebug).orElse(false)) {
             getLogger().info(string, objects);
         }
     }
@@ -155,11 +157,11 @@ public class Integrity {
         return configuration;
     }
     
-    public Config getConfig() {
+    public Optional<Config> getConfig() {
         if (getConfiguration() != null) {
-            return getConfiguration().getConfig();
+            return Optional.ofNullable(getConfiguration().getConfig());
         }
         
-        return null;
+        return Optional.empty();
     }
 }
